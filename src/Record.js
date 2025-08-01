@@ -81,6 +81,7 @@ export class Record {
     if (this.content === undefined) return "undefined";
 
     const primitiveType = typeof this.content;
+
     if (primitiveType !== "object") {
       return primitiveType;
     }
@@ -265,16 +266,15 @@ export class Record {
  */
 function decodeAttribute(htmlStr) {
   const normalizedCharacterTokens = htmlStr.trim().replace(/['"]$/, "").split(/\s+/).pop();
-  const bracketCycle = htmlStr
-    .trim()
-    .split(/[^<>]/)
-    .filter((token) => token);
+  const bracketCycle = htmlStr.trim().split(/[^<>]/).filter((token) => token);
 
   if (normalizedCharacterTokens.endsWith("=")) {
+
     // Attribute value assignment: attribute="value"
     const attributeName = normalizedCharacterTokens.substr(0, normalizedCharacterTokens.length - 1);
     const capitalizedName = String(attributeName).charAt(0).toUpperCase() + String(attributeName).slice(1);
     const isAttributeValueAssignment = true;
+
     return {
       attributeName,
       isAttributeValueAssignment,
@@ -286,6 +286,7 @@ function decodeAttribute(htmlStr) {
     return { isAttributeDomain };
   } else {
     // Element domain: <element>content
+
     return { isElementDomain: true };
   }
 }

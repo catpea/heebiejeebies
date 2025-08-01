@@ -1,6 +1,8 @@
 // Lightweight XML/HTML Parser - Modern JavaScript
 // Supports nested nodes, multiple attributes with same name, and void tags
 
+import {query} from './query.js';
+
 class ParseNode {
   constructor(name, attributes = [], children = [], isVoid = false) {
     this.name = name;
@@ -8,6 +10,18 @@ class ParseNode {
     this.children = children;
     this.isVoid = isVoid;
     this.parent = null;
+  }
+
+  after(...nodes){
+    // insert nodes in this.parent after this one
+    const myIndex = this.parent.children.indexOf(this);
+    this.parent.children.splice(myIndex, 0, ...nodes);
+  }
+
+  remove(){
+    // insert nodes in this.parent after this one
+    const myIndex = this.parent.children.indexOf(this);
+    this.parent.children.splice(myIndex, 1);
   }
 
   // Get first attribute value by name
@@ -25,9 +39,24 @@ class ParseNode {
   walk(callback) {
     callback(this);
     for (const child of this.children) {
-      if (child.walk) child.walk(callback);
+      if (child.walk){
+       child.walk(callback);
+      }
     }
   }
+
+  seek(callback) {
+    callback(this);
+    for (const child of this.children) {
+      if (child.seek){
+       child.seek(callback);
+      }else{
+        callback(child);
+      }
+    }
+  }
+
+
 
   // Find first node by name
   find(name) {
@@ -50,6 +79,16 @@ class ParseNode {
     return results;
   }
 
+  types = [ TextNode, CommentNode ];
+  findType(type, fn) {
+    const results = [];
+    this.seek(node => {
+
+      if ((node instanceof this.types[type])&&(fn?fn(node):1)) results.push(node);
+    });
+    return results;
+  }
+
   // Find by attribute
   findByAttr(attrName, attrValue = null) {
     const results = [];
@@ -61,6 +100,10 @@ class ParseNode {
     });
     return results;
   }
+
+  query(path){
+    return query(this, '$.' + path);
+  }
 }
 
 class TextNode {
@@ -68,12 +111,32 @@ class TextNode {
     this.content = content;
     this.parent = null;
   }
+  remove(){
+    // insert nodes in this.parent after this one
+    const myIndex = this.parent.children.indexOf(this);
+    this.parent.children.splice(myIndex, 1);
+  }
+  after(...nodes){
+    // insert nodes in this.parent after this one
+    const myIndex = this.parent.children.indexOf(this);
+    this.parent.children.splice(myIndex, 0, ...nodes);
+  }
 }
 
 class CommentNode {
   constructor(content) {
     this.content = content;
     this.parent = null;
+  }
+  remove(){
+    // insert nodes in this.parent after this one
+    const myIndex = this.parent.children.indexOf(this);
+    this.parent.children.splice(myIndex, 1);
+  }
+  after(...nodes){
+    // insert nodes in this.parent after this one
+    const myIndex = this.parent.children.indexOf(this);
+    this.parent.children.splice(myIndex, 0, ...nodes);
   }
 }
 
@@ -163,6 +226,7 @@ class XMLParser {
     }
 
     if (this.peek() !== '>') {
+      this.dump();
       throw new Error(`Expected '>' at position ${this.pos}`);
     }
     this.advance(); // Skip '>'
@@ -280,6 +344,16 @@ class XMLParser {
       this.advance();
     }
     return name;
+  }
+
+  dump() {
+    console.log('-'.repeat(32));
+    console.log(`XML DUMP`);
+    console.log(this.xml);
+    console.log('-'.repeat(32));
+    console.log(`View of buffer starting at [${this.pos}]`);
+    console.log(this.xml.substr(this.pos));
+    console.log('-'.repeat(32));
   }
 
   peek(offset = 0) {
