@@ -14,7 +14,7 @@ const foo = xml`
 `;
 
 console.log(util.inspect(foo.root, { showHidden: false, depth: null, colors:1 }));
-// console.log( foo );
+console.log( foo.root.toXML() );
 
 // const selected = foo.root.query('Panel.VGroup')
 // console.log(selected)

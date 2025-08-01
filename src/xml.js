@@ -153,9 +153,6 @@ function interpolateNodes(root, database) {
   const commentNodes = root.findType(1, node=>node.content.startsWith('::'));
   if(!commentNodes.length) return;
 
-  console.log('commentNodes'.repeat(3))
-  console.log(commentNodes)
-  console.log('commentNodes'.repeat(3))
 
   for(const commentNode of commentNodes){
     nodesToRemove.push(commentNode);

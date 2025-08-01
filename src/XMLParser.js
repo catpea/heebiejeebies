@@ -104,6 +104,69 @@ class ParseNode {
   query(path){
     return query(this, '$.' + path);
   }
+
+  // Convert back to XML string
+  toXML(indent = 0, indentSize = 2) {
+    const spaces = ' '.repeat(indent);
+
+    // Root node - just render children
+    if (this.name === 'root') {
+      return this.children.map(child => {
+        if (child.toXML) return child.toXML(indent, indentSize);
+        if (child.content !== undefined) return child.content; // TextNode
+        return '';
+      }).join('');
+    }
+
+    // Build opening tag
+    let xml = `${spaces}<${this.name}`;
+
+    // Add attributes
+    for (const attr of this.attributes.filter(o=>o)) {
+      const v = attr.value.value||'';
+      const value = String(v).includes('"') ? `'${v}'` : `"${v}"`;
+      xml += ` ${attr.name}=${value}`;
+    }
+
+    // Handle void/self-closing tags
+    if (this.isVoid || this.children.length === 0) {
+      xml += this.isVoid ? '>' : '/>';
+      return xml + '\n';
+    }
+
+    xml += '>';
+
+    // Check if we have only text content (inline)
+    const hasOnlyText = this.children.length === 1 &&
+                       this.children[0].content !== undefined;
+
+    if (hasOnlyText) {
+      xml += this.children[0].content;
+      xml += `</${this.name}>`;
+      return xml + '\n';
+    }
+
+    // Multi-line with children
+    xml += '\n';
+
+    // Add children
+    for (const child of this.children) {
+      if (child.toXML) {
+        xml += child.toXML(indent + indentSize, indentSize);
+      } else if (child.content !== undefined) {
+        // TextNode - trim and add if not empty
+        const content = child.content.trim();
+        if (content) {
+          xml += `${' '.repeat(indent + indentSize)}${content}\n`;
+        }
+      }
+    }
+
+    // Closing tag
+    xml += `${spaces}</${this.name}>\n`;
+    return xml;
+  }
+
 }
 
 class TextNode {
