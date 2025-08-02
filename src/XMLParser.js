@@ -3,6 +3,42 @@
 
 import {query} from './query.js';
 
+class TextNode {
+  constructor(content) {
+    this.content = content;
+    this.parent = null;
+  }
+  remove(){
+    // insert nodes in this.parent after this one
+    const myIndex = this.parent.children.indexOf(this);
+    this.parent.children.splice(myIndex, 1);
+  }
+  after(...nodes){
+    // insert nodes in this.parent after this one
+    const myIndex = this.parent.children.indexOf(this);
+    this.parent.children.splice(myIndex, 0, ...nodes);
+  }
+}
+
+class CommentNode {
+  constructor(content) {
+    this.content = content;
+    this.parent = null;
+  }
+  remove(){
+    // insert nodes in this.parent after this one
+    const myIndex = this.parent.children.indexOf(this);
+    this.parent.children.splice(myIndex, 1);
+  }
+  after(...nodes){
+    // insert nodes in this.parent after this one
+    const myIndex = this.parent.children.indexOf(this);
+    this.parent.children.splice(myIndex, 0, ...nodes);
+  }
+}
+
+const NODE_TYPES = [ TextNode, CommentNode ];
+
 class ParseNode {
   constructor(name, attributes = [], children = [], isVoid = false) {
     this.name = name;
@@ -79,12 +115,12 @@ class ParseNode {
     return results;
   }
 
-  types = [ TextNode, CommentNode ];
   findType(type, fn) {
     const results = [];
     this.seek(node => {
 
-      if ((node instanceof this.types[type])&&(fn?fn(node):1)) results.push(node);
+      // if ((node instanceof NODE_TYPES[type])) results.push(node);
+      if ((node instanceof NODE_TYPES[type])&&(fn?fn(node):1)) results.push(node);
     });
     return results;
   }
@@ -104,6 +140,23 @@ class ParseNode {
   query(path){
     return query(this, '$.' + path);
   }
+
+  empty() {
+     // Recursively empty all children first
+     for (const child of this.children) {
+       if (child.empty) {
+         child.empty();
+       }
+       // Break parent reference
+       child.parent = null;
+     }
+
+     // Clear all references
+     this.children.length = 0;
+     this.attributes.length = 0;
+     this.parent = null;
+     this.name = null;
+   }
 
   // Convert back to XML string
   toXML(indent = 0, indentSize = 2) {
@@ -169,39 +222,6 @@ class ParseNode {
 
 }
 
-class TextNode {
-  constructor(content) {
-    this.content = content;
-    this.parent = null;
-  }
-  remove(){
-    // insert nodes in this.parent after this one
-    const myIndex = this.parent.children.indexOf(this);
-    this.parent.children.splice(myIndex, 1);
-  }
-  after(...nodes){
-    // insert nodes in this.parent after this one
-    const myIndex = this.parent.children.indexOf(this);
-    this.parent.children.splice(myIndex, 0, ...nodes);
-  }
-}
-
-class CommentNode {
-  constructor(content) {
-    this.content = content;
-    this.parent = null;
-  }
-  remove(){
-    // insert nodes in this.parent after this one
-    const myIndex = this.parent.children.indexOf(this);
-    this.parent.children.splice(myIndex, 1);
-  }
-  after(...nodes){
-    // insert nodes in this.parent after this one
-    const myIndex = this.parent.children.indexOf(this);
-    this.parent.children.splice(myIndex, 0, ...nodes);
-  }
-}
 
 class XMLParser {
   constructor() {
@@ -402,7 +422,7 @@ class XMLParser {
   parseIdentifier() {
     let name = '';
     // Allow letters, numbers, hyphens, underscores, colons, and dots
-    while (this.pos < this.length && /[a-zA-Z0-9\-_:.]/.test(this.peek())) {
+    while (this.pos < this.length && /[a-zA-Z0-9\-_:.@]/.test(this.peek())) {
       name += this.peek();
       this.advance();
     }

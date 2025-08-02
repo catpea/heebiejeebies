@@ -3,7 +3,7 @@
   "version": "1.0.3",
   "type": "module",
   "description": "The Worlds Most Beautiful Simplified XML Parser",
-  "main": "index.js",
+  "main": "src/xml.js",
   "scripts": {
     "web": "http-server -o -c-1 .",
     "save": "git add .; git commit -m 'Updated Release'; npm version patch; npm publish; git push --follow-tags;"
