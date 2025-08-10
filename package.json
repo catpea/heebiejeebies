@@ -1,6 +1,6 @@
 {
   "name": "heebiejeebies",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "type": "module",
   "description": "The Worlds Most Beautiful Simplified XML Parser",
   "main": "src/xml.js",
