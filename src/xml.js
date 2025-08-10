@@ -9,13 +9,14 @@ import parsingStrategy from "./strategy/quote-bracket.js"; // 4.607ms, 4.902ms T
 // import parsingStrategy from "./strategy/multi-pass.js";    // 5.462ms, 5.57ms, This is the most sophisticated approach that provides maximum accuracy through systematic verification. This multi-pass strategy represents the **gold standard** for template parsing - when you absolutely need to get the context right every time, regardless of template complexity!
 
 const parser = new XMLParser();
-export function xml({ raw: strings }, ...values) {
+
+export function xtree({ raw: strings }, ...values) {
   const context = new Map();
   const xml = parsingStrategy(context, strings, values);
-  const tree = parser.parse(xml); // Create tree with :: markers (attr="::0", ::1="", <!-- ::5 -->) Markers
-  interpolateAttributes(tree, context); // PHASE 3: Upgrade Intermediate Attributes - Live Attributes
+  const nodeTree = parser.parse(xml); // Create tree with :: markers (attr="::0", ::1="", <!-- ::5 -->) Markers
+  interpolateAttributes(nodeTree, context); // PHASE 3: Upgrade Intermediate Attributes - Live Attributes
   const destructibles = new Set();
-  interpolateNodes(tree, context, destructibles); // PHASE 4: Upgrade Intermediate Nodes (Comment Nodes) - Node Import
+  interpolateNodes(nodeTree, context, destructibles); // PHASE 4: Upgrade Intermediate Nodes (Comment Nodes) - Node Import
   const signalListeners = () =>
     [...database.values()]
       .filter((record) => record.isTemplateVariable)
@@ -25,7 +26,9 @@ export function xml({ raw: strings }, ...values) {
       .forEach((unsubscribeFn) => unsubscribeFn());
   destructibles.add(signalListeners);
   const unsubscribe = () => destructibles.forEach((destructible) => destructible());
-  return { tree, unsubscribe };
+
+  const electedRoot = nodeTree.children.length==1?nodeTree.children[0]:nodeTree;
+  return { tree: electedRoot, unsubscribe, appendInto: htmlElement=>appendInto(electedRoot, htmlElement)};
 }
 
 // for: interpolateAttributes
@@ -52,17 +55,19 @@ function interpolateAttributes(root, database) {
       const isSpreadReference = attribute.name.startsWith("::") && attribute.value == "";
 
       if (isPrimitiveAttribute) {
-        // upgrade plain to Signal
-        const value = parseElementAttributeValue(attribute.value);
-        const signal = new Signal(value);
-        node.attributes[index].value = signal;
+        // upgrade plain to Signal height="120"
+        const parsedValue = parseElementAttributeValue(attribute.value);
+        delete attribute.value;
+
+        attribute.signal = new Signal(parsedValue);
         // NOTE: do not add new signals to database, we are in the tree now, add to tree directly
       }
 
       if (isAttributeReference) {
         // upgrade height="::3" from reference to signal
         const id = parseInt(attribute.value.substr(2));
-        node.attributes[index].value = database.get(id).value;
+        delete attribute.value;
+        attribute.signal = database.get(id).value;
       }
 
       // Spread Objects
@@ -77,7 +82,7 @@ function interpolateAttributes(root, database) {
             const capitalizedName = String(attributeName).charAt(0).toUpperCase() + String(attributeName).slice(1);
             const recordId = attribute.name + "-" + attributeName;
             const intelligence = { isAttributeValueAssignment: true, attributeName, ["is" + capitalizedName + "Attribute"]: true };
-            newAttributes.push({ originalIndex: index, name: attributeName, value: signal });
+            newAttributes.push({ originalIndex: index, name: attributeName, signal });
           } // for
         }
         delete node.attributes[index];
@@ -86,8 +91,8 @@ function interpolateAttributes(root, database) {
 
     // Place everything correctly
     let newAdditionCounter = 1;
-    for (const { originalIndex, name, value } of newAttributes) {
-      node.attributes.splice(originalIndex + newAdditionCounter++, 0, { name, value });
+    for (const { originalIndex, name, signal } of newAttributes) {
+      node.attributes.splice(originalIndex + newAdditionCounter++, 0, { name, signal });
     }
     // and then clean up the sparsearray
     node.attributes = node.attributes.filter((item) => item !== undefined);
@@ -125,4 +130,38 @@ function interpolateNodes(root, context, destructibles) {
   for (const node of nodesToRemove) {
     node.remove();
   }
+}
+
+function appendInto(sourceNode, targetNode){
+
+
+  if (sourceNode.content && typeof sourceNode.content === 'string') {
+     const textNode = document.createTextNode(sourceNode.content);
+     if (targetNode) {
+       targetNode.appendChild(textNode);
+     }
+     return textNode;
+   }
+
+
+  const element = document.createElement(sourceNode.name);
+
+  // Set attributes if they exist
+  if (sourceNode.attributes && Array.isArray(sourceNode.attributes)) {
+    sourceNode.attributes.forEach(attr => attr.signal.subscribe(v=>element.setAttribute(attr.name, v)) );
+  }
+
+  // Recursively process children if they exist
+  if (sourceNode.children && Array.isArray(sourceNode.children)) {
+    sourceNode.children.forEach(child => {
+      appendInto(child, element);
+    });
+  }
+
+  // Append to target node if provided
+  if (targetNode) {
+    targetNode.appendChild(element);
+  }
+
+  return element;
 }

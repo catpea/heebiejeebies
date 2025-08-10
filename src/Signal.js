@@ -24,7 +24,7 @@ export class Signal {
   }
 
   set value(newValue) {
-    if (newValue == this.#value) return; // IMPORTANT FEATURE: if value is the same, exit early, don't disturb if you don't need to
+    if (newValue == this.#value) return console.info('Same value'); // IMPORTANT FEATURE: if value is the same, exit early, don't disturb if you don't need to
     this.#value = newValue;
     this.notify(); // all observers
   }

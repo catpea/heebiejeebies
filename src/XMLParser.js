@@ -1,46 +1,54 @@
 // Lightweight XML/HTML Parser - Modern JavaScript
 // Supports nested nodes, multiple attributes with same name, and void tags
 
+import {Revision} from './Revision.js';
 import {query} from './query.js';
 
-class TextNode {
-  constructor(content) {
-    this.content = content;
-    this.parent = null;
-  }
+
+
+class BaseNode {
+
   remove(){
     // insert nodes in this.parent after this one
     const myIndex = this.parent.children.indexOf(this);
     this.parent.children.splice(myIndex, 1);
   }
+
   after(...nodes){
     // insert nodes in this.parent after this one
     const myIndex = this.parent.children.indexOf(this);
     this.parent.children.splice(myIndex, 0, ...nodes);
   }
+
 }
 
-class CommentNode {
+class TextNode extends BaseNode {
   constructor(content) {
+    super()
     this.content = content;
     this.parent = null;
   }
-  remove(){
-    // insert nodes in this.parent after this one
-    const myIndex = this.parent.children.indexOf(this);
-    this.parent.children.splice(myIndex, 1);
+
+}
+
+class CommentNode extends BaseNode {
+  constructor(content) {
+    super()
+    this.content = content;
+    this.parent = null;
   }
-  after(...nodes){
-    // insert nodes in this.parent after this one
-    const myIndex = this.parent.children.indexOf(this);
-    this.parent.children.splice(myIndex, 0, ...nodes);
-  }
+
 }
 
 const NODE_TYPES = [ TextNode, CommentNode ];
 
-class ParseNode {
+class ParseNode  extends BaseNode {
+
   constructor(name, attributes = [], children = [], isVoid = false) {
+    super();
+
+    this.rev = new Revision(1);
+
     this.name = name;
     this.attributes = attributes; // Array of {name, value} objects to support duplicates
     this.children = children;
@@ -48,17 +56,7 @@ class ParseNode {
     this.parent = null;
   }
 
-  after(...nodes){
-    // insert nodes in this.parent after this one
-    const myIndex = this.parent.children.indexOf(this);
-    this.parent.children.splice(myIndex, 0, ...nodes);
-  }
 
-  remove(){
-    // insert nodes in this.parent after this one
-    const myIndex = this.parent.children.indexOf(this);
-    this.parent.children.splice(myIndex, 1);
-  }
 
   // Get first attribute value by name
   attr(name) {
@@ -458,6 +456,11 @@ class XMLParser {
       this.advance();
     }
   }
+}
+
+export function generateId() {
+  const randomChars = (length = 8) => Array.from({ length }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("");
+  return `${randomChars()}-${randomChars(4)}-${randomChars(4)}-${randomChars(4)}-${randomChars(12)}`;
 }
 
 export { XMLParser, ParseNode, TextNode, CommentNode };
